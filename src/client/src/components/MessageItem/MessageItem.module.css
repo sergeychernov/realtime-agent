@@ -1,0 +1,97 @@
+.message {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.assistant {
+  justify-content: flex-start;
+}
+
+.messageBubble {
+  max-width: 70%;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message.user .messageBubble {
+  background-color: #007bff;
+  color: white;
+}
+
+.message.assistant .messageBubble {
+  background-color: #e9ecef;
+  color: #333;
+}
+
+.messageContent {
+  flex: 1;
+}
+
+.audioControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.playButton {
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  min-width: 32px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playButton:hover {
+  background: #218838;
+}
+
+.playButton.playing {
+  background: #ffc107;
+  color: #212529;
+}
+
+.playButton:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.message.user .playButton {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.message.user .playButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.message.user .playButton.playing {
+  background: #ffc107;
+  color: #212529;
+}
+
+.audioInfo {
+  font-size: 10px;
+  color: #666;
+  opacity: 0.7;
+}
+
+.message.user .audioInfo {
+  color: rgba(255, 255, 255, 0.8);
+}

@@ -1,0 +1,159 @@
+.event {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.event.expanded {
+  background: #ffffff;
+  border-color: #2196f3;
+}
+
+.eventHeader {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.eventHeader:hover {
+  background-color: #f0f0f0;
+}
+
+.event.expanded .eventHeader {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.eventHeader.handoff {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.eventHeader.tool {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+}
+
+.event.expanded .eventHeader.handoff {
+  background-color: #fff3e0;
+}
+
+.event.expanded .eventHeader.tool {
+  background-color: #e8f5e8;
+}
+
+.eventInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.eventTitle {
+  font-weight: 600;
+}
+
+.eventTimestamp {
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: #666;
+  opacity: 0.8;
+}
+
+.eventToggle {
+  color: #666;
+  font-size: 10px;
+  margin-left: 8px;
+}
+
+.eventPreview {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.eventContent {
+  padding: 12px;
+  background: #ffffff;
+  border-top: 1px solid #e0e0e0;
+}
+
+.eventSection {
+  margin-bottom: 12px;
+}
+
+.eventSection:last-child {
+  margin-bottom: 0;
+}
+
+.eventSection strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 12px;
+}
+
+.eventJson {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 3px;
+  padding: 8px;
+  margin: 0;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+  color: #495057;
+  line-height: 1.4;
+}
+
+.eventOutput {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 3px;
+  padding: 8px;
+  font-size: 12px;
+  color: #495057;
+  white-space: pre-wrap;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.event.collapsed .eventContent {
+  display: none;
+}
+
+/* Скроллбар для JSON и output */
+.eventJson::-webkit-scrollbar,
+.eventOutput::-webkit-scrollbar {
+  width: 4px;
+}
+
+.eventJson::-webkit-scrollbar-track,
+.eventOutput::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+.eventJson::-webkit-scrollbar-thumb,
+.eventOutput::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 2px;
+}
+
+.eventJson::-webkit-scrollbar-thumb:hover,
+.eventOutput::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

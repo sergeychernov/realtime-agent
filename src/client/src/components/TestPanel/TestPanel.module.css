@@ -1,0 +1,131 @@
+.testPanel {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.headerControls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.testInput {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.testInput:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.testInput:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.testButton {
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.testButton:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.testButton:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.presetQuestions {
+  padding: 1rem;
+}
+
+.questionsRow {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.questionsColumn {
+  flex: 1;
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 1rem 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.questionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.presetButton {
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  color: #495057;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.presetButton:hover:not(:disabled) {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.presetButton:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.presetButton:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.presetButton:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.toolButton {
+  background-color: #e8f5e8;
+  border-color: #28a745;
+  color: #155724;
+}
+
+.toolButton:hover:not(:disabled) {
+  background-color: #d4edda;
+  border-color: #1e7e34;
+}

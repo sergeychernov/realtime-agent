@@ -1,0 +1,105 @@
+.conversationPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #ddd;
+}
+
+.panel {
+  flex: 1;
+  max-height: none;
+  height: 100%;
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.micBtn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s;
+  font-size: 12px;
+}
+
+.micBtn.stopped {
+  background-color: #6c757d;
+  color: white;
+}
+
+.micBtn.recording {
+  background-color: #dc3545;
+  color: white;
+  box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+}
+
+.micBtn:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.muteBtn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s;
+  font-size: 12px;
+  min-width: 32px;
+}
+
+.muteBtn.muted {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.muteBtn.unmuted {
+  background-color: #28a745;
+  color: white;
+}
+
+.status {
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.status.connected {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status.disconnected {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.messagesContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 8px;
+}
+
+.emptyState {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  margin-top: 2rem;
+}
+
+.audioError {
+  color: #dc3545;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  background-color: #f8d7da;
+  border-top: 1px solid #f5c6cb;
+}
