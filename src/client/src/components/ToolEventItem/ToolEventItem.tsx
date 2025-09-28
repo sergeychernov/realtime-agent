@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import styles from './ToolEventItem.module.css';
+import { ServerEvent } from '@common/types';
+
+type UIEvent = (ServerEvent & Partial<{ tool: string; from: string; to: string; output: string }>) & {
+  id: string | number;
+  timestamp: Date;
+};
 
 interface ToolEventItemProps {
-  event: {
-    id: string | number;
-    type: string;
-    timestamp: Date;
-    tool?: string;
-    from?: string;
-    to?: string;
-    output?: string;
-    [key: string]: any;
-  };
+  event: UIEvent;
 }
 
 const ToolEventItem: React.FC<ToolEventItemProps> = ({ event }) => {

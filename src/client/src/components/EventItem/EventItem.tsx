@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import styles from './EventItem.module.css';
 import { audioPlayer } from '../../utils/audioPlayer';
+import { ServerEvent } from '@common/types';
+
+type UIEvent = ServerEvent & { id: string | number; timestamp: Date };
 
 interface EventItemProps {
-  event: {
-    id: string | number;
-    type: string;
-    timestamp: Date;
-    audio?: string; // base64 аудио данные
-    [key: string]: any;
-  };
+  event: UIEvent;
   index: number;
 }
 
@@ -41,7 +38,7 @@ const EventItem: React.FC<EventItemProps> = ({ event, index }) => {
   };
 
   const playAudio = async () => {
-    if (!event.audio) return;
+    if (event.type !== 'audio') return;
     await audioPlayer.playAudio(event.audio);
   };
 
@@ -69,7 +66,7 @@ const EventItem: React.FC<EventItemProps> = ({ event, index }) => {
 
   const formatEventContent = () => {
     // Для аудио событий показываем размер данных вместо самих данных
-    if (event.type === 'audio' && event.audio) {
+    if (event.type === 'audio') {
       const eventCopy = { ...event };
       eventCopy.audio = `[base64 аудио данные, размер: ${event.audio.length} символов]`;
       return JSON.stringify(eventCopy, null, 2);

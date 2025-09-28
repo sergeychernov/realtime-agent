@@ -1,27 +1,9 @@
 import { WebSocket } from 'ws';
-import { v4 as uuidv4 } from 'uuid';
-import { YandexCloudConfig, RealtimeSession, ToolResult } from '../common/types.js';
+import { YandexCloudConfig, RealtimeSession, AudioMessage, TextMessage, CommitAudioMessage, InterruptMessage, ServerEvent, MessageItem } from '../common/types.js';
 import { toBuffer } from '../common/utils.js';
+import { sanitizeStringsDeep } from './utils.js';
 import { ToolsManager } from './tools.js';
-
-// Локальные типы для сообщений (как в старом сервере)
-interface AudioMessage {
-  type: 'audio';
-  data: number[]; // int16 array
-}
-
-interface TextMessage {
-  type: 'text_message';
-  text: string;
-}
-
-interface CommitAudioMessage {
-  type: 'commit_audio';
-}
-
-interface InterruptMessage {
-  type: 'interrupt';
-}
+import { transformYandexEvent } from './yandex-event-transform.js';
 
 type ClientMessageType = AudioMessage | TextMessage | CommitAudioMessage | InterruptMessage;
 
@@ -198,22 +180,23 @@ export class RealtimeWebSocketManager {
     });
 
     yandexWs.on('message', (data: any) => {
-      // ВАЖНО: Логируем ВСЕ сообщения от Yandex, но сокращаем длинные данные
+      // ВАЖНО: Логируем ВСЕ сообщения от Yandex, с безопасной обработкой больших JSON
       const rawMessage = toBuffer(data).toString();
       console.log(`[${session.id}] 🔥 ПОЛУЧЕНО ОТ YANDEX: ${rawMessage.length} символов`);
       
-      // Сокращаем длинные сообщения для логов
-      let logMessage = rawMessage;
-      if (rawMessage.length > 500) {
-        logMessage = rawMessage.substring(0, 500) + '...';
-      }
-      console.log(`[${session.id}] 🔥 СОДЕРЖИМОЕ:`, logMessage);
-      
       try {
         const parsed = JSON.parse(rawMessage);
+        const sanitized = sanitizeStringsDeep(parsed, 200);
+        console.log(`[${session.id}] 🔥 СОДЕРЖИМОЕ (JSON):`, sanitized);
         console.log(`[${session.id}] 🔥 ПАРСИНГ УСПЕШЕН, тип: ${parsed.type}`);
         this.handleYandexMessage(session, toBuffer(data));
       } catch (error) {
+        // Если это не JSON — выводим усечённую строку
+        let logMessage = rawMessage;
+        if (rawMessage.length > 500) {
+          logMessage = rawMessage.substring(0, 500) + '...';
+        }
+        console.log(`[${session.id}] 🔥 СОДЕРЖИМОЕ:`, logMessage);
         console.error(`[${session.id}] ❌ ОШИБКА ПАРСИНГА YANDEX:`, error);
       }
     });
@@ -359,7 +342,7 @@ export class RealtimeWebSocketManager {
 
   private handleYandexMessage(session: RealtimeSession, data: Buffer): void {
     try {
-      const event = JSON.parse(data.toString());
+      let event = JSON.parse(data.toString());
       console.log(`[${session.id}] 📨 Получено событие от Yandex: ${event.type}`);
 
       // Переключение агента при старте инструмента + событие handoff
@@ -367,233 +350,86 @@ export class RealtimeWebSocketManager {
         const toolName = event.item.name || 'unknown';
         const newAgent = this.getAgentNameForTool(toolName);
         if (newAgent !== session.activeAgent) {
-          // Отправляем событие handoff
           this.sendToClient(session, {
             type: 'handoff',
             from: session.activeAgent,
             to: newAgent,
           });
-          // Переключаем активного агента
           session.activeAgent = newAgent;
         }
       }
-      
-      // УБИРАЕМ ДУБЛИРУЮЩУЮ ОТПРАВКУ raw_model_event
-      // Пробрасываем сырые события только для неизвестных типов в transformYandexEvent
 
-      // ВАЖНО: пробрасываем session внутрь трансформации
-      const transformed = this.transformYandexEvent(session, event);
+      // Приведение error-события к стандартному формату (без мутаций исходного объекта)
+      if (event.type === 'error' && event.message && !event.error) {
+        event = { ...event, error: { error: event.message } };
+        delete event.message;
+      }
+
+      // Побочные эффекты, вынесенные из трансформации
+      if (event.type === 'response.audio.delta' && event.delta) {
+        this.logErrorThrottled(session.id, 'audio_delta_received', () => {
+          console.log(`[${session.id}] 🎵 Получена аудио дельта (audio), размер: ${event.delta.length} символов`);
+        }, 3000);
+      }
+
+      if (event.type === 'response.output_audio.delta' && event.delta) {
+        this.logErrorThrottled(session.id, 'output_audio_delta_received', () => {
+          console.log(`[${session.id}] 🎵 Получена аудио дельта (output_audio), размер: ${event.delta.length} символов`);
+        }, 3000);
+      }
+
+      if (event.type === 'response.output_item.added' && event.item?.type === 'function_call') {
+        const callId = event.item.call_id;
+        const itemId = event.item.id;
+        const toolName = event.item.name || 'unknown';
+        if (callId) {
+          this.pendingFunctionCalls.set(callId, toolName);
+        }
+        if (itemId) {
+          this.pendingFunctionCalls.set(itemId, toolName);
+        }
+        if (itemId && callId) {
+          this.pendingFunctionCallIds.set(itemId, callId);
+        }
+      }
+
+      if (event.type === 'response.output_item.done' && event.item?.type === 'function_call' && event.item.status === 'completed') {
+        this.handleFunctionCall(session, event.item);
+      }
+
+      if (event.type === 'response.done' && session.pendingToolResult) {
+        const toSpeak = session.pendingToolResult;
+        setTimeout(() => {
+          this.sendToYandex(session, {
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [
+                { type: 'input_text', text: `Озвучь результат: ${toSpeak}` }
+              ]
+            }
+          });
+
+          this.sendToYandex(session, {
+            type: 'response.create',
+            response: {
+              modalities: ['audio'],
+              instructions: 'Озвучь результат выполнения инструмента коротко и естественно.'
+            }
+          });
+        }, 100);
+
+        session.pendingToolResult = undefined;
+      }
+
+      // Чистая трансформация события в ServerEvent
+      const transformed = transformYandexEvent(event, session.activeAgent);
       if (transformed) {
         this.sendToClient(session, transformed);
       }
     } catch (error) {
       console.error(`[${session.id}] ❌ Ошибка парсинга сообщения от Yandex:`, error);
-    }
-  }
-
-  private transformYandexEvent(session: RealtimeSession, event: any): any | null {
-    // Применяем патч для событий ошибок от Yandex Cloud
-    if (event.type === 'error' && event.message && !event.error) {
-      event.error = { error: event.message };
-      delete event.message;
-    }
-
-    switch (event.type) {
-      case 'session.created':
-        console.log(`[${session.id}] ✅ Сессия создана в Yandex Cloud`);
-        return null;
-      
-      case 'session.updated':
-        console.log(`[${session.id}] ✅ Сессия обновлена в Yandex Cloud`);
-        return null;
-      
-      case 'input_audio_buffer.committed':
-        console.log(`[${session.id}] 🎵 Аудио буфер зафиксирован в Yandex Cloud`);
-        return null;
-      
-      case 'input_audio_buffer.speech_started':
-        console.log(`[${session.id}] 🎤 Начало речи обнаружено VAD`);
-        return { type: 'audio_interrupted' };
-      
-      case 'input_audio_buffer.speech_stopped':
-        console.log(`[${session.id}] 🎤 Конец речи обнаружен VAD - автоматически запускается ответ`);
-        return { type: 'audio_end' };
-      
-      case 'conversation.item.created':
-        console.log(`[${session.id}] 💬 Элемент разговора создан:`, event.item?.type || 'unknown');
-        return {
-          type: 'history_added',
-          item: event.item
-        };
-      
-      case 'response.created':
-        console.log(`[${session.id}] 🚀 Ответ создан автоматически через VAD`);
-        return { type: 'agent_start', agent: session.activeAgent };
-      
-      case 'response.done':
-        console.log(`[${session.id}] 🏁 Ответ завершен (response.done)`);
-        
-        // УЛУЧШЕННАЯ ЛОГИКА ОЗВУЧИВАНИЯ РЕЗУЛЬТАТОВ ИНСТРУМЕНТОВ
-        if (session.pendingToolResult) {
-          console.log(`[${session.id}] 🎤 Запрашиваем озвучивание результата инструмента:`, session.pendingToolResult);
-          
-          // Создаем новый ответ с результатом инструмента
-          setTimeout(() => {
-            this.sendToYandex(session, {
-              type: 'conversation.item.create',
-              item: {
-                type: 'message',
-                role: 'user',
-                content: [
-                  {
-                    type: 'input_text',
-                    text: `Озвучь результат: ${session.pendingToolResult}`
-                  }
-                ]
-              }
-            });
-            
-            // Запрашиваем ответ
-            this.sendToYandex(session, {
-              type: 'response.create',
-              response: {
-                modalities: ['audio'],
-                instructions: 'Озвучь результат выполнения инструмента коротко и естественно.'
-              }
-            });
-          }, 100);
-          
-          // Очищаем ожидающий результат
-          session.pendingToolResult = undefined;
-        }
-        
-        return {
-          type: 'agent_end',
-          agent: session.activeAgent
-        };
-      
-      case 'response.output_item.added':
-        console.log(`[${session.id}] 📝 Выходной элемент добавлен:`, event.item?.type || 'unknown');
-        
-        if (event.item && event.item.type === 'function_call') {
-          console.log(`[${session.id}] 🔧 Обнаружен вызов функции:`, event.item.name);
-
-          // Сохраняем имя инструмента по двум ключам: call_id и item.id
-          const callId = event.item.call_id;
-          const itemId = event.item.id;
-          const toolName = event.item.name || 'unknown';
-          if (callId) {
-            this.pendingFunctionCalls.set(callId, toolName);
-          }
-          if (itemId) {
-            this.pendingFunctionCalls.set(itemId, toolName);
-          }
-          if (itemId && callId) {
-            this.pendingFunctionCallIds.set(itemId, callId);
-          }
-
-          return {
-            type: 'tool_start',
-            tool: toolName
-          };
-        }
-        
-        return {
-          type: 'history_added',
-          item: event.item
-        };
-      
-      case 'response.output_item.done':
-        console.log(`[${session.id}] ✅ Выходной элемент завершен:`, event.item?.type || 'unknown');
-        
-        // ВАЖНО: Обрабатываем завершенные function_call
-        if (event.item && event.item.type === 'function_call' && event.item.status === 'completed') {
-          console.log(`[${session.id}] 🔧 Завершен вызов функции:`, event.item.name, 'с аргументами:', event.item.arguments);
-          
-          // Выполняем функцию асинхронно
-          this.handleFunctionCall(session, event.item);
-          
-          return {
-            type: 'history_added',
-            item: event.item
-          };
-        }
-        
-        return {
-          type: 'history_added',
-          item: event.item
-        };
-      
-      case 'response.audio.delta':
-        if (event.delta) {
-          this.logErrorThrottled(session.id, 'audio_delta_received', () => {
-            console.log(`[${session.id}] 🎵 Получена аудио дельта (audio), размер: ${event.delta.length} символов`);
-          }, 3000);
-          return {
-            type: 'audio',
-            audio: event.delta
-          };
-        }
-        return null;
-      
-      case 'response.audio.done':
-        console.log(`[${session.id}] 🎵 Аудио ответ завершен (audio)`);
-        return { type: 'audio_end' };
-      
-      case 'response.output_audio.delta':
-        if (event.delta) {
-          this.logErrorThrottled(session.id, 'output_audio_delta_received', () => {
-            console.log(`[${session.id}] 🎵 Получена аудио дельта (output_audio), размер: ${event.delta.length} символов`);
-          }, 3000);
-          return {
-            type: 'audio',
-            audio: event.delta
-          };
-        }
-        return null;
-      
-      case 'response.output_audio.done':
-        console.log(`[${session.id}] 🎵 Аудио ответ завершен (output_audio)`);
-        return { type: 'audio_end' };
-      
-      case 'conversation.item.input_audio_transcription.completed':
-        console.log(`[${session.id}] 📝 Транскрипция входящего аудио завершена:`, event.transcript);
-        return {
-          type: 'history_added',
-          item: {
-            type: 'message',
-            role: 'user',
-            item_id: (event.item_id || event.id || uuidv4()),
-            content: [
-              { type: 'input_audio', transcript: event.transcript }
-            ]
-          }
-        };
-      
-      case 'error':
-        console.error(`[${session.id}] ❌ Ошибка от Yandex:`, event.error);
-        return {
-          type: 'error',
-          error: event.error?.error || event.error || 'Unknown error'
-        };
-      
-      // ДОБАВЛЯЕМ ОБРАБОТКУ ИЗВЕСТНЫХ СОБЫТИЙ, ЧТОБЫ НЕ ДУБЛИРОВАТЬ
-      case 'response.content_part.added':
-      case 'response.content_part.done':
-      case 'response.output_text.done':
-      case 'response.output_audio_transcript.done':
-        // Эти события просто пробрасываем как raw_model_event без дублирования
-        return {
-          type: 'raw_model_event',
-          raw_model_event: { type: event.type }
-        };
-      
-      default:
-        console.log(`[${session.id}] ❓ Неизвестное событие от Yandex: ${event.type}`);
-        return {
-          type: 'raw_model_event',
-          raw_model_event: { type: event.type }
-        };
     }
   }
 
@@ -670,7 +506,7 @@ export class RealtimeWebSocketManager {
     }
   }
 
-  private sendToClient(session: RealtimeSession, event: any): void {
+  private sendToClient(session: RealtimeSession, event: ServerEvent): void {
     if (session.websocket.readyState === WebSocket.OPEN) {
       const eventStr = JSON.stringify(event);
       

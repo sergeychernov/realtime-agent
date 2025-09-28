@@ -104,7 +104,7 @@ export interface HistoryUpdatedEvent extends BaseEvent {
 
 export interface HistoryAddedEvent extends BaseEvent {
   type: 'history_added';
-  item: any;
+  item: MessageItem;
 }
 
 export interface GuardrailTrippedEvent extends BaseEvent {
@@ -114,9 +114,7 @@ export interface GuardrailTrippedEvent extends BaseEvent {
 
 export interface RawModelEvent extends BaseEvent {
   type: 'raw_model_event';
-  raw_model_event: {
-    type: string;
-  };
+  raw_model_event: any;
 }
 
 export interface ErrorEvent extends BaseEvent {
@@ -175,4 +173,30 @@ export interface RealtimeSession {
   activeAgent: string;
   defaultAgent: string;
   pendingToolResult?: string;
+}
+
+// Общие типы для элементов истории сообщений
+export type MessageRole = 'user' | 'assistant';
+
+export type TextContentPart = { type: 'text'; text: string };
+export type InputTextContentPart = { type: 'input_text'; text: string };
+export type InputAudioContentPart = { type: 'input_audio'; transcript?: string };
+export type AudioContentPart = { type: 'audio'; transcript?: string; audio?: string };
+
+// Добавляем недостающие типы контента, которые приходят от модели
+export type OutputTextContentPart = { type: 'output_text'; text: string };
+export type OutputAudioTranscriptContentPart = { type: 'output_audio_transcript'; transcript: string };
+
+export type ContentPart =
+  | TextContentPart
+  | InputTextContentPart
+  | InputAudioContentPart
+  | AudioContentPart
+  | OutputTextContentPart
+  | OutputAudioTranscriptContentPart;
+
+export interface MessageItem {
+  type: 'message';
+  role: MessageRole;
+  content: ContentPart[] | string;
 }

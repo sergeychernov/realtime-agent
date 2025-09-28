@@ -5,11 +5,7 @@ import TestPanel from './components/TestPanel';
 import EventsList from './components/EventsList';
 import ToolEventsList from './components/ToolEventsList';
 import { audioPlayer } from './utils/audioPlayer';
-
-interface ServerEvent {
-  type: string;
-  [key: string]: any;
-}
+import { ServerEvent, MessageItem } from '@common/types';
 
 interface Message {
   id: string;
@@ -19,13 +15,15 @@ interface Message {
   audio?: string; // Добавляем поле для аудио
 }
 
+type UIEvent = ServerEvent & { id: number; timestamp: Date };
+
 function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
-  const [toolEvents, setToolEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<UIEvent[]>([]);
+  const [toolEvents, setToolEvents] = useState<UIEvent[]>([]);
   const [currentMessageAudio, setCurrentMessageAudio] = useState<string[]>([]); // Накапливаем аудио для текущего сообщения
   
   const wsRef = useRef<WebSocket | null>(null);
@@ -165,7 +163,7 @@ function App() {
     console.log('📨 Получено событие:', event.type, event);
     
     // Используем текущее время как timestamp события
-    const eventWithTimestamp = { 
+    const eventWithTimestamp: UIEvent = { 
       ...event, 
       timestamp: new Date(),
       id: Date.now() + Math.random()
@@ -212,65 +210,61 @@ function App() {
     }
   }, []);
 
-  const addMessageFromItem = useCallback((item: any) => {
+  const addMessageFromItem = useCallback((item: MessageItem) => {
     console.log('🔍 Обработка элемента истории:', item);
     
     if (!item || item.type !== 'message') {
       console.log('❌ Элемент не является сообщением:', item);
       return;
     }
-
+  
     let content = '';
     const role = item.role;
-    
+  
     if (Array.isArray(item.content)) {
       for (const part of item.content) {
         if (!part || typeof part !== 'object') continue;
         
         // Обрабатываем разные типы контента
-        if (part.type === 'text' && part.text) {
-          content += part.text;
-        } else if (part.type === 'input_text' && part.text) {
-          content += part.text;
-        } else if (part.type === 'input_audio' && part.transcript) {
-          content += part.transcript;
-        } else if (part.type === 'audio' && part.transcript) {
-          content += part.transcript;
+        if (part.type === 'text' && (part as any).text) {
+          content += (part as any).text;
+        } else if (part.type === 'input_text' && (part as any).text) {
+          content += (part as any).text;
+        } else if (part.type === 'input_audio' && (part as any).transcript) {
+          content += (part as any).transcript;
+        } else if (part.type === 'audio' && (part as any).transcript) {
+          content += (part as any).transcript;
+        } else if (part.type === 'output_text' && (part as any).text) {
+          // Учитываем выходной текст ассистента
+          content += (part as any).text;
+        } else if (part.type === 'output_audio_transcript' && (part as any).transcript) {
+          // Учитываем транскрипт озвученного ответа
+          content += (part as any).transcript;
         }
       }
     } else if (typeof item.content === 'string') {
       content = item.content;
     }
 
-    if (content.trim()) {
+    // Фолбэк: если ассистент и есть аудио, но текста нет — всё равно показываем сообщение
+    const hasAudio = role === 'assistant' && currentMessageAudio.length > 0;
+  
+    if (content.trim() || hasAudio) {
       // Объединяем накопленное аудио для сообщения ассистента
       let combinedAudio = '';
-      if (role === 'assistant' && currentMessageAudio.length > 0) {
-        // Простое объединение base64 строк (не идеально, но работает для демо)
+      if (hasAudio) {
         combinedAudio = currentMessageAudio.join('');
-        console.log('🎵 Объединено аудио частей:', currentMessageAudio.length, 'общий размер:', combinedAudio.length);
       }
-
-      const message: Message = {
-        id: item.item_id || item.id || Date.now().toString(),
-        type: role === 'user' ? 'user' : 'assistant',
-        content: content.trim(),
+      
+      const newMessage = {
+        id: Date.now().toString(),
+        type: role,
+        content: content.trim() ? content : 'Озвученный ответ',
         timestamp: new Date(),
-        audio: combinedAudio || undefined
-      };
-
-      console.log('✅ Добавляем сообщение с аудио:', message.audio ? `есть аудио (${message.audio.length} символов)` : 'без аудио');
-
-      setMessages(prev => {
-        // Проверяем, нет ли уже такого сообщения
-        if (prev.some(m => m.id === message.id)) {
-          console.log('⚠️ Сообщение уже существует:', message.id);
-          return prev;
-        }
-        return [...prev, message];
-      });
-    } else {
-      console.log('⚠️ Пустое содержимое сообщения:', item);
+        audio: combinedAudio || undefined,
+      } as const;
+  
+      setMessages(prev => [...prev, newMessage]);
     }
   }, [currentMessageAudio]);
 

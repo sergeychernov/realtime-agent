@@ -1,18 +1,15 @@
 import React from 'react';
 import ToolEventItem from '../ToolEventItem';
 import Panel from '../Panel';
+import { ServerEvent } from '@common/types';
+
+type UIEvent = (ServerEvent & Partial<{ tool: string; from: string; to: string; output: string }>) & {
+  id: string | number;
+  timestamp: Date;
+};
 
 interface ToolEventsListProps {
-  toolEvents: Array<{
-    id: string | number;
-    type: string;
-    timestamp: Date;
-    tool?: string;
-    from?: string;
-    to?: string;
-    output?: string;
-    [key: string]: any;
-  }>;
+  toolEvents: UIEvent[];
 }
 
 const ToolEventsList: React.FC<ToolEventsListProps> = ({ toolEvents }) => {

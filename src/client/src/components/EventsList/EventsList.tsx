@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import EventItem from '../EventItem';
 import Panel from '../Panel';
+import { ServerEvent } from '@common/types';
+
+type UIEvent = ServerEvent & { id: string | number; timestamp: Date };
 
 interface EventsListProps {
-  events: Array<{
-    id: string | number;
-    type: string;
-    timestamp: Date;
-    [key: string]: any;
-  }>;
+  events: UIEvent[];
   title: string;
   maxDisplayCount?: number;
 }
