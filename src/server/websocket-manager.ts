@@ -1,86 +1,9 @@
 import { WebSocket } from 'ws';
-import { YandexCloudConfig, RealtimeSession, AudioMessage, TextMessage, CommitAudioMessage, InterruptMessage, ServerEvent, MessageItem } from '../common/types.js';
+import { YandexCloudConfig, RealtimeSession, AudioMessage, TextMessage, ServerEvent } from '../common/types.js';
 import { toBuffer } from '../common/utils.js';
 import { sanitizeStringsDeep } from './utils.js';
 import { ToolsManager } from './tools.js';
 import { transformYandexEvent } from './yandex-event-transform.js';
-
-type ClientMessageType = AudioMessage | TextMessage | CommitAudioMessage | InterruptMessage;
-
-// Типы для событий сервера (как в старом сервере)
-interface BaseEvent {
-  type: string;
-}
-
-interface AgentStartEvent extends BaseEvent {
-  type: 'agent_start';
-  agent: string;
-}
-
-interface AgentEndEvent extends BaseEvent {
-  type: 'agent_end';
-  agent: string;
-}
-
-interface HandoffEvent extends BaseEvent {
-  type: 'handoff';
-  from: string;
-  to: string;
-}
-
-interface ToolStartEvent extends BaseEvent {
-  type: 'tool_start';
-  tool: string;
-}
-
-interface ToolEndEvent extends BaseEvent {
-  type: 'tool_end';
-  tool: string;
-  output: string;
-}
-
-interface AudioEvent extends BaseEvent {
-  type: 'audio';
-  audio: string; // base64 encoded
-}
-
-interface AudioInterruptedEvent extends BaseEvent {
-  type: 'audio_interrupted';
-}
-
-interface AudioEndEvent extends BaseEvent {
-  type: 'audio_end';
-}
-
-interface HistoryAddedEvent extends BaseEvent {
-  type: 'history_added';
-  item: any;
-}
-
-interface RawModelEvent extends BaseEvent {
-  type: 'raw_model_event';
-  raw_model_event: {
-    type: string;
-  };
-}
-
-interface ErrorEvent extends BaseEvent {
-  type: 'error';
-  error: string;
-}
-
-type ServerEventType = 
-  | AgentStartEvent 
-  | AgentEndEvent 
-  | HandoffEvent 
-  | ToolStartEvent 
-  | ToolEndEvent 
-  | AudioEvent 
-  | AudioInterruptedEvent 
-  | AudioEndEvent 
-  | HistoryAddedEvent 
-  | RawModelEvent 
-  | ErrorEvent;
 
 export class RealtimeWebSocketManager {
   private sessions: Map<string, RealtimeSession> = new Map();
