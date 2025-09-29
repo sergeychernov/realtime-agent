@@ -52,7 +52,7 @@ export type ClientMessage =
   | InterruptMessage
   | TextMessage;
 
-// Типы событий сервера
+// Типы событий от сервера
 export interface BaseEvent {
   type: string;
 }
@@ -154,16 +154,17 @@ export interface YandexCloudConfig {
   apiKey: string;
   folderId: string;
   modelName: string;
+  url: string;
 }
 
-// Интерфейс для результата выполнения инструмента
+// Результат выполнения инструмента
 export interface ToolResult {
   success: boolean;
   result: string;
   error?: string;
 }
 
-// Интерфейс сессии WebSocket (без импорта WebSocket для совместимости)
+// Сессия реального времени
 export interface RealtimeSession {
   id: string;
   websocket: any; // WebSocket - будет типизирован в серверной части
@@ -175,7 +176,7 @@ export interface RealtimeSession {
   pendingToolResult?: string;
 }
 
-// Общие типы для элементов истории сообщений
+// Типы для сообщений
 export type MessageRole = 'user' | 'assistant';
 
 export type TextContentPart = { type: 'text'; text: string };
@@ -183,7 +184,7 @@ export type InputTextContentPart = { type: 'input_text'; text: string };
 export type InputAudioContentPart = { type: 'input_audio'; transcript?: string };
 export type AudioContentPart = { type: 'audio'; transcript?: string; audio?: string };
 
-// Добавляем недостающие типы контента, которые приходят от модели
+// Типы для вывода
 export type OutputTextContentPart = { type: 'output_text'; text: string };
 export type OutputAudioTranscriptContentPart = { type: 'output_audio_transcript'; transcript: string };
 

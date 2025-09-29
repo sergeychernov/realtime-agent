@@ -16,10 +16,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Конфигурация Yandex Cloud - теперь переменные должны загружаться
+// Конфигурация Yandex Cloud - восстанавливаем правильный URL
 const yandexConfig: YandexCloudConfig = {
   apiKey: process.env.YANDEX_API_KEY || '',
   folderId: process.env.YANDEX_FOLDER_ID || '',
-  modelName: process.env.YANDEX_MODEL_NAME || 'speech-realtime-250923'
+  modelName: process.env.YANDEX_MODEL_NAME || 'speech-realtime-250923',
+  url: process.env.YANDEX_WEBSOCKET_URL || 'wss://rest-assistant.api.cloud.yandex.net/v1/realtime/openai'
 };
 
 // Проверяем, что переменные загрузились
@@ -27,6 +29,7 @@ console.log('🔍 Проверяем переменные окружения:');
 console.log('   YANDEX_API_KEY:', process.env.YANDEX_API_KEY ? `${process.env.YANDEX_API_KEY.substring(0, 10)}...` : 'НЕ ЗАДАН');
 console.log('   YANDEX_FOLDER_ID:', process.env.YANDEX_FOLDER_ID || 'НЕ ЗАДАН');
 console.log('   YANDEX_MODEL_NAME:', process.env.YANDEX_MODEL_NAME || 'НЕ ЗАДАН');
+console.log('   YANDEX_WEBSOCKET_URL:', yandexConfig.url);
 
 if (!yandexConfig.apiKey || !yandexConfig.folderId) {
   console.error('❌ ОШИБКА: Не заданы обязательные переменные окружения YANDEX_API_KEY или YANDEX_FOLDER_ID');
