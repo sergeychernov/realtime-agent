@@ -51,7 +51,7 @@ export const YANDEX_PROFILES: ProfileConfig[] = [
     voice: 'ermil', 
     gender: 'male', 
     description: 'Ермил - мужской голос', 
-    name: 'Ермил',
+    name: 'Геральт из Ривии',
     supportedEmotions: ['neutral', 'good'] 
   },
   { 

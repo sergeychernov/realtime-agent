@@ -290,16 +290,63 @@ function App() {
     }
   }, []);
 
+  const downloadClientLog = useCallback(() => {
+    // Формируем данные для скачивания
+    const logData = {
+      events: events.map(event => ({
+        ...event,
+        timestamp: event.timestamp.toISOString()
+      })),
+      conversation: messages.map(message => ({
+        ...message,
+        timestamp: message.timestamp.toISOString()
+      })),
+      tools: toolEvents.map(event => ({
+        ...event,
+        timestamp: event.timestamp.toISOString()
+      }))
+    };
+
+    // Создаем blob с JSON данными
+    const jsonString = JSON.stringify(logData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    
+    // Создаем ссылку для скачивания
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `client-log-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    
+    // Добавляем в DOM, кликаем и удаляем
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Освобождаем память
+    URL.revokeObjectURL(url);
+    
+    console.log('📥 Клиентский лог скачан');
+  }, [events, messages, toolEvents]);
+
   return (
     <div className="app">
       <div className="header">
         <h1>Голосовой Ассистент</h1>
-        <button
-          onClick={isConnected ? disconnect : connect}
-          className={`connect-btn ${isConnected ? 'connected' : 'disconnected'}`}
-        >
-          {isConnected ? 'Отключиться' : 'Подключиться'}
-        </button>
+        <div className="header-buttons">
+          <button
+            onClick={isConnected ? disconnect : connect}
+            className={`connect-btn ${isConnected ? 'connected' : 'disconnected'}`}
+          >
+            {isConnected ? 'Отключиться' : 'Подключиться'}
+          </button>
+          <button
+            onClick={downloadClientLog}
+            className="download-btn"
+            title="Скачать клиентский лог для отладки"
+          >
+            Скачать JSON
+          </button>
+        </div>
       </div>
       
       <div className="main">
