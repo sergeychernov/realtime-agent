@@ -105,7 +105,7 @@ export interface HistoryUpdatedEvent extends BaseEvent {
 
 export interface HistoryAddedEvent extends BaseEvent {
   type: 'history_added';
-  item: MessageItem;
+  item: YandexMessageItem;
 }
 
 export interface GuardrailTrippedEvent extends BaseEvent {
@@ -201,4 +201,14 @@ export interface MessageItem {
   type: 'message';
   role: MessageRole;
   content: ContentPart[] | string;
+}
+
+// Расширенный тип для элементов сообщений от Yandex Cloud API
+export interface YandexMessageItem extends MessageItem {
+  id?: string;
+  object?: string;
+  status?: string;
+  call_id?: string | null;
+  name?: string | null;
+  arguments?: string | null;
 }

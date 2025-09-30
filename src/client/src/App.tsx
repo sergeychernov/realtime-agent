@@ -5,7 +5,7 @@ import TestPanel from './components/TestPanel';
 import EventsList from './components/EventsList';
 import ToolEventsList from './components/ToolEventsList';
 import { audioPlayer } from './utils/audioPlayer';
-import { ServerEvent, MessageItem } from '@common/types';
+import { ServerEvent, YandexMessageItem } from '@common/types';
 
 interface Message {
   id: string;
@@ -204,13 +204,40 @@ function App() {
           addMessageFromItem(event.item);
         }
         break;
+      case 'raw_model_event':
+        // Обрабатываем дельты текста для обновления сообщений
+        if (event.raw_model_event?.type === 'response.output_text.delta') {
+          const delta = event.raw_model_event.delta;
+          const itemId = event.raw_model_event.item_id;
+          
+          if (delta && itemId) {
+            console.log('📝 Обновление текста сообщения:', itemId, delta);
+            updateMessageText(itemId, delta);
+          }
+        }
+        break;
       case 'error':
         console.error('❌ Ошибка:', event.error);
         break;
     }
   }, []);
 
-  const addMessageFromItem = useCallback((item: MessageItem) => {
+  const updateMessageText = useCallback((itemId: string, delta: string) => {
+    setMessages(prev => {
+      return prev.map(message => {
+        // Ищем сообщение по ID (используем itemId из события)
+        if (message.id === itemId || message.id.includes(itemId)) {
+          return {
+            ...message,
+            content: message.content + delta
+          };
+        }
+        return message;
+      });
+    });
+  }, []);
+
+  const addMessageFromItem = useCallback((item: YandexMessageItem) => {
     console.log('🔍 Обработка элемента истории:', item);
     
     if (!item || item.type !== 'message') {
@@ -249,22 +276,38 @@ function App() {
     // Фолбэк: если ассистент и есть аудио, но текста нет — всё равно показываем сообщение
     const hasAudio = role === 'assistant' && currentMessageAudio.length > 0;
   
-    if (content.trim() || hasAudio) {
+    // Для сообщений ассистента создаем сообщение даже если текст пустой (будет обновлен через дельты)
+    if (content.trim() || hasAudio || role === 'assistant') {
       // Объединяем накопленное аудио для сообщения ассистента
       let combinedAudio = '';
       if (hasAudio) {
         combinedAudio = currentMessageAudio.join('');
       }
       
+      // Используем ID из item если есть, иначе генерируем
+      const messageId = item.id || Date.now().toString();
+      
       const newMessage = {
-        id: Date.now().toString(),
+        id: messageId,
         type: role,
-        content: content.trim() ? content : 'Озвученный ответ',
+        content: content.trim() || (role === 'assistant' ? '' : 'Озвученный ответ'),
         timestamp: new Date(),
         audio: combinedAudio || undefined,
       } as const;
-  
-      setMessages(prev => [...prev, newMessage]);
+
+      // Проверяем, не существует ли уже сообщение с таким ID
+      setMessages(prev => {
+        const existingIndex = prev.findIndex(msg => msg.id === messageId);
+        if (existingIndex >= 0) {
+          // Обновляем существующее сообщение
+          const updated = [...prev];
+          updated[existingIndex] = { ...updated[existingIndex], ...newMessage };
+          return updated;
+        } else {
+          // Добавляем новое сообщение
+          return [...prev, newMessage];
+        }
+      });
     }
   }, [currentMessageAudio]);
 
