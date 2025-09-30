@@ -31,9 +31,9 @@ export class YandexHandler {
     // Формируем правильный URL с параметрами модели
     const { apiKey, folderId, modelName } = this.yandexConfig;
     const url = `${this.yandexConfig.url}?model=gpt://${folderId}/${modelName}`;
-    
+
     console.log(`[${session.id}] 🌐 Подключение к Yandex Cloud: ${url}`);
-    
+
     const yandexWs = new WebSocket(url, {
       headers: {
         'Authorization': `api-key ${apiKey}`
@@ -46,15 +46,15 @@ export class YandexHandler {
       console.log(`[${session.id}] ✅ Подключен к Yandex Cloud`);
       // Получаем случайный профиль для этой сессии
       this.selectedProfile = getRandomProfile();
-      console.log(`[${session.id}] 🎤 Выбран ассистент: ${this.selectedProfile.displayName} (${this.selectedProfile.gender})`);
-      
+      console.log(`[${session.id}] 🎤 Выбран ассистент: ${this.selectedProfile.name} (${this.selectedProfile.gender})`);
+
       // Отправляем начальную конфигурацию сессии
       const sessionConfig = {
         type: 'session.update',
         session: {
           modalities: ['text', 'audio'],
           instructions: this.getSystemInstructions(),
-          voice: this.selectedProfile.name,
+          voice: this.selectedProfile.voice,
           input_audio_format: 'pcm16',
           output_audio_format: 'pcm16',
           input_audio_transcription: {
@@ -76,14 +76,14 @@ export class YandexHandler {
 
       console.log(`[${session.id}] ⚙️ Отправка конфигурации сессии`);
       this.sendToYandex(session, sessionConfig);
-      
+
       // Отправляем приветствие через TTS API
       setTimeout(async () => {
         try {
           console.log(`[${session.id}] 🎵 Генерация приветствия через TTS API`);
-          
+
           const greeting = await this.tts.createGreeting(this.selectedProfile!);
-          
+
           // Отправляем текст приветствия в историю
           this.sendToClient(session, {
             type: 'history_added',
@@ -114,9 +114,9 @@ export class YandexHandler {
           console.log(`[${session.id}] ✅ Приветствие отправлено (${greeting.audio.length} байт аудио)`);
         } catch (error) {
           console.error(`[${session.id}] ❌ Ошибка генерации приветствия:`, error);
-          
+
           // Fallback: отправляем текстовое приветствие
-          const fallbackText = `Привет! Я ${this.selectedProfile?.displayName}. Как дела? Чем могу помочь?`;
+          const fallbackText = `Привет! Я ${this.selectedProfile?.name}. Как дела? Чем могу помочь?`;
           this.sendToClient(session, {
             type: 'history_added',
             item: {
@@ -138,7 +138,7 @@ export class YandexHandler {
       // ВАЖНО: Логируем ВСЕ сообщения от Yandex, с безопасной обработкой больших JSON
       const rawMessage = toBuffer(data).toString();
       console.log(`[${session.id}] 🔥 ПОЛУЧЕНО ОТ YANDEX: ${rawMessage.length} символов`);
-      
+
       try {
         const parsed = JSON.parse(rawMessage);
         const sanitized = sanitizeStringsDeep(parsed, 200);
@@ -277,7 +277,7 @@ export class YandexHandler {
       }
 
       const result = await this.toolsManager.executeTool(functionCall.name, args);
-      
+
       const resultText = result.success ? result.result : `Ошибка: ${result.error}`;
 
       if (!functionCall.call_id) {
@@ -318,7 +318,7 @@ export class YandexHandler {
   sendToYandex(session: RealtimeSession, message: any): void {
     if (session.yandexWs && session.yandexWs.readyState === WebSocket.OPEN) {
       const messageStr = JSON.stringify(message);
-      
+
       // Тротлинг для частых сообщений
       if (message.type === 'input_audio_buffer.append') {
         this.logErrorThrottled(session.id, 'yandex_send_audio', () => {
@@ -327,7 +327,7 @@ export class YandexHandler {
       } else {
         console.log(`[${session.id}] 📤 Отправка в Yandex: ${message.type}, размер: ${messageStr.length} байт`);
       }
-      
+
       session.yandexWs.send(messageStr);
     } else {
       console.error(`[${session.id}] ❌ Не удалось отправить в Yandex, WebSocket не готов. Состояние: ${session.yandexWs?.readyState}`);
@@ -338,7 +338,7 @@ export class YandexHandler {
     const compositeKey = `${sessionId}:${key}`;
     const now = Date.now();
     const last = this.logTimestamps.get(compositeKey) || 0;
-    
+
     if (now - last >= intervalMs) {
       logFn();
       this.logTimestamps.set(compositeKey, now);
@@ -351,7 +351,7 @@ export class YandexHandler {
 Отвечайте на вопросы клиента коротко и дружелюбно. 
 Используйте инструменты, не придумывайте ответы сами.
 
-Ты ${this.selectedProfile?.displayName || 'Марина'}, специалист по часто задаваемым вопросам
+Ты ${this.selectedProfile?.name || 'Марина'}, специалист по часто задаваемым вопросам
 Отвечайте на вопросы пользователя, вызывая нужный инструмент.
 Отвечайте максимально коротко и естественно, без приветствий и без фраз вроде "Чем ещё могу помочь?".`;
   }

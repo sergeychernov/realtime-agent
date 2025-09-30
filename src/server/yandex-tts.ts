@@ -1,10 +1,11 @@
 import { YandexCloudConfig } from '../common/types.js';
+import { TTSEmotion } from './types.js';
 import { ProfileConfig } from './config/assistant-profile.js';
 
 export interface TTSOptions {
   text: string;
   voice: string;
-  emotion?: 'good' | 'evil' | 'neutral';
+  emotion?: TTSEmotion;
   speed?: number;
   format?: 'lpcm' | 'oggopus';
   sampleRateHertz?: number;
@@ -22,7 +23,7 @@ export class YandexTTS {
    */
   async synthesizeSpeech(options: TTSOptions): Promise<Buffer> {
     const url = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize';
-    
+
     const params = new URLSearchParams({
       text: options.text,
       voice: options.voice,
@@ -69,19 +70,29 @@ export class YandexTTS {
    */
   async createGreeting(profile: ProfileConfig): Promise<{ text: string; audio: Buffer; sampleRate: number }> {
     const greetings = [
-      `Привет! Я ${profile.displayName}. Чем могу помочь?`,
-      `Здравствуйте! ${profile.displayName} к вашим услугам.`,
-      `Привет! ${profile.displayName} на связи. Готов помочь!`
+      `Привет! Я ${profile.name}. Чем могу помочь?`,
+      `Здравствуйте! ${profile.name} к вашим услугам.`,
+      `Привет! ${profile.name} на связи. Готов помочь!`
     ];
 
     const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
     const sampleRate = 16000; // Используем поддерживаемую частоту
 
+    // Выбираем подходящую эмоцию из поддерживаемых профилем
+    let emotion: 'neutral' | 'good' | 'evil' = 'neutral';
+    
+    // Для приветствия предпочитаем 'good', если поддерживается, иначе 'neutral'
+    if (profile.supportedEmotions.includes('good')) {
+      emotion = 'good';
+    } else {
+      emotion = 'neutral';
+    }
+
     const audio = await this.synthesizeSpeech({
       text: randomGreeting,
-      voice: profile.name,
-      emotion: 'good',
-      speed: 1.0,
+      voice: profile.voice,
+      emotion: emotion,
+      speed: 1.2,
       format: 'lpcm',
       sampleRateHertz: sampleRate
     });

@@ -1,23 +1,66 @@
+import { TTSEmotion } from '../types.js';
+
 export interface ProfileConfig {
-  name: string;
+  voice: string;
   gender: 'male' | 'female';
   description?: string;
-  displayName: string; // Русское имя для отображения
+  name: string; // Русское имя для отображения
+  supportedEmotions: TTSEmotion[]; // Поддерживаемые эмоции для API v1
 }
 
 export const YANDEX_PROFILES: ProfileConfig[] = [
-  // Женские голоса
-  { name: 'marina', gender: 'female', description: 'Марина - женский голос', displayName: 'Марина' },
-  { name: 'jane', gender: 'female', description: 'Джейн - женский голос', displayName: 'Джейн' },
-  { name: 'oksana', gender: 'female', description: 'Оксана - женский голос', displayName: 'Оксана' },
-  { name: 'omazh', gender: 'female', description: 'Омаж - женский голос', displayName: 'Омаж' },
-  { name: 'alena', gender: 'female', description: 'Алена - женский голос', displayName: 'Алена' },
-  
-  // Мужские голоса
-  { name: 'filipp', gender: 'male', description: 'Филипп - мужской голос', displayName: 'Филипп' },
-  { name: 'ermil', gender: 'male', description: 'Ермил - мужской голос', displayName: 'Ермил' },
-  { name: 'madirus', gender: 'male', description: 'Мадирус - мужской голос', displayName: 'Мадирус' },
-  { name: 'anton', gender: 'male', description: 'Антон - мужской голос', displayName: 'Антон' }
+  // Женские голоса (поддерживаемые в API v1)
+  { 
+    voice: 'marina', 
+    gender: 'female', 
+    description: 'Марина - женский голос', 
+    name: 'Марина',
+    supportedEmotions: ['neutral'] 
+  },
+  { 
+    voice: 'jane', 
+    gender: 'female', 
+    description: 'Джейн - женский голос', 
+    name: 'Джейн',
+    supportedEmotions: ['neutral', 'good', 'evil'] 
+  },
+  { 
+    voice: 'omazh', 
+    gender: 'female', 
+    description: 'Омаж - женский голос', 
+    name: 'Омаж',
+    supportedEmotions: ['neutral', 'evil'] 
+  },
+  { 
+    voice: 'alena', 
+    gender: 'female', 
+    description: 'Алена - женский голос', 
+    name: 'Алена',
+    supportedEmotions: ['neutral', 'good'] 
+  },
+
+  // Мужские голоса (поддерживаемые в API v1)
+  { 
+    voice: 'filipp', 
+    gender: 'male', 
+    description: 'Филипп - мужской голос', 
+    name: 'Филипп',
+    supportedEmotions: ['neutral'] 
+  },
+  { 
+    voice: 'ermil', 
+    gender: 'male', 
+    description: 'Ермил - мужской голос', 
+    name: 'Ермил',
+    supportedEmotions: ['neutral', 'good'] 
+  },
+  { 
+    voice: 'zahar', 
+    gender: 'male', 
+    description: 'Захар - мужской голос', 
+    name: 'Захар',
+    supportedEmotions: ['neutral', 'good'] 
+  }
 ];
 
 /**
@@ -41,5 +84,5 @@ export function getRandomProfileByGender(gender: 'male' | 'female'): ProfileConf
  * Получает профиль по имени
  */
 export function getProfileByName(name: string): ProfileConfig | undefined {
-  return YANDEX_PROFILES.find(profile => profile.name === name);
+  return YANDEX_PROFILES.find(profile => profile.voice === name);
 }
