@@ -28,6 +28,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
   const playAudio = async () => {
     if (!message.audio) return;
     console.log('🎵 Воспроизведение аудио из сообщения:', message.id);
+    // Для сохраненных сообщений используем стандартную частоту
     await audioPlayer.playAudio(message.audio);
   };
 

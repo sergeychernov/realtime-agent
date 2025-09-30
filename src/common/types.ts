@@ -87,6 +87,7 @@ export interface ToolEndEvent extends BaseEvent {
 export interface AudioEvent extends BaseEvent {
   type: 'audio';
   audio: string; // base64 encoded
+  sampleRate?: number; // частота дискретизации
 }
 
 export interface AudioInterruptedEvent extends BaseEvent {

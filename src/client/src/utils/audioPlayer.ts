@@ -2,7 +2,7 @@ class AudioPlayer {
   private audioContext: AudioContext | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
   private isPlaying: boolean = false;
-  private audioQueue: string[] = [];
+  private audioQueue: Array<{audio: string, sampleRate?: number}> = [];
   private isProcessingQueue: boolean = false;
 
   async initialize() {
@@ -17,11 +17,11 @@ class AudioPlayer {
     }
   }
 
-  async playAudio(base64Audio: string): Promise<void> {
-    console.log('🎵 Добавление аудио в очередь, размер:', base64Audio.length);
+  async playAudio(base64Audio: string, sampleRate?: number): Promise<void> {
+    console.log('🎵 Добавление аудио в очередь, размер:', base64Audio.length, 'частота:', sampleRate);
     
     // Добавляем в очередь
-    this.audioQueue.push(base64Audio);
+    this.audioQueue.push({audio: base64Audio, sampleRate});
     
     // Запускаем обработку очереди если она не запущена
     if (!this.isProcessingQueue) {
@@ -35,23 +35,26 @@ class AudioPlayer {
     }
 
     this.isProcessingQueue = true;
-    console.log('🎵 Начинаем обработку очереди аудио, элементов:', this.audioQueue.length);
 
     while (this.audioQueue.length > 0) {
-      const base64Audio = this.audioQueue.shift()!;
-      await this.playAudioImmediate(base64Audio);
+      const audioItem = this.audioQueue.shift()!;
       
-      // Ждем завершения воспроизведения
-      while (this.isPlaying) {
-        await new Promise(resolve => setTimeout(resolve, 50));
+      try {
+        await this.playAudioImmediate(audioItem.audio, audioItem.sampleRate);
+        
+        // Ждем завершения воспроизведения
+        while (this.isPlaying) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      } catch (error) {
+        console.error('❌ Ошибка воспроизведения аудио из очереди:', error);
       }
     }
 
     this.isProcessingQueue = false;
-    console.log('🎵 Очередь аудио обработана');
   }
 
-  private async playAudioImmediate(base64Audio: string): Promise<void> {
+  private async playAudioImmediate(base64Audio: string, sampleRate?: number): Promise<void> {
     try {
       await this.initialize();
       
@@ -89,14 +92,16 @@ class AudioPlayer {
         
         // Обрабатываем как PCM16 данные
         const pcmData = new Int16Array(pcmArrayBuffer);
-        const sampleRate = 44100; // Используем стандартную частоту 44.1kHz
+        const usedSampleRate = sampleRate || 44100; // Используем переданную частоту или 44.1kHz по умолчанию
         const numberOfChannels = 1; // Моно
+        
+        console.log('🎵 Используем частоту дискретизации:', usedSampleRate, 'Hz');
         
         // Создаем AudioBuffer для PCM данных
         audioBuffer = this.audioContext!.createBuffer(
           numberOfChannels,
           pcmData.length,
-          sampleRate
+          usedSampleRate
         );
         
         // Конвертируем Int16 в Float32 и заполняем буфер

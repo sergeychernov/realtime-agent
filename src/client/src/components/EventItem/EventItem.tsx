@@ -39,7 +39,7 @@ const EventItem: React.FC<EventItemProps> = ({ event, index }) => {
 
   const playAudio = async () => {
     if (event.type !== 'audio') return;
-    await audioPlayer.playAudio(event.audio);
+    await audioPlayer.playAudio(event.audio, event.sampleRate);
   };
 
   const getEventTypeDisplay = () => {

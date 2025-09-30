@@ -5,6 +5,7 @@ import { sanitizeStringsDeep } from './utils.js';
 import { ToolsManager } from './tools.js';
 import { transformYandexEvent } from './yandex-event-transform.js';
 import { getRandomProfile, ProfileConfig } from './config/assistant-profile.js';
+import { YandexTTS } from './yandex-tts.js';
 
 export class YandexHandler {
   private yandexConfig: YandexCloudConfig;
@@ -14,6 +15,7 @@ export class YandexHandler {
   private logTimestamps: Map<string, number> = new Map();
   private sendToClient: (session: RealtimeSession, event: ServerEvent) => void;
   private selectedProfile: ProfileConfig | null = null;
+  private tts: YandexTTS;
 
   constructor(
     config: YandexCloudConfig,
@@ -22,6 +24,7 @@ export class YandexHandler {
     this.yandexConfig = config;
     this.toolsManager = new ToolsManager();
     this.sendToClient = sendToClient;
+    this.tts = new YandexTTS(config);
   }
 
   async connectToYandexCloud(session: RealtimeSession): Promise<void> {
@@ -39,12 +42,11 @@ export class YandexHandler {
 
     session.yandexWs = yandexWs;
 
-    yandexWs.on('open', () => {
+    yandexWs.on('open', async () => {
       console.log(`[${session.id}] ✅ Подключен к Yandex Cloud`);
       // Получаем случайный профиль для этой сессии
       this.selectedProfile = getRandomProfile();
       console.log(`[${session.id}] 🎤 Выбран ассистент: ${this.selectedProfile.displayName} (${this.selectedProfile.gender})`);
-      console.log(`[${session.id}] 🎤 Голос: ${this.selectedProfile.name} - ${this.selectedProfile.description}`);
       
       // Отправляем начальную конфигурацию сессии
       const sessionConfig = {
@@ -62,18 +64,74 @@ export class YandexHandler {
             type: 'server_vad',
             threshold: 0.5,
             prefix_padding_ms: 300,
-            silence_duration_ms: 200
+            silence_duration_ms: 500
           },
           tools: this.getToolDefinitions(),
           tool_choice: 'auto',
           temperature: 0.8,
           max_response_output_tokens: 4096,
-          speed: 1.2
+          speed: 1.0
         }
       };
-      
+
       console.log(`[${session.id}] ⚙️ Отправка конфигурации сессии`);
       this.sendToYandex(session, sessionConfig);
+      
+      // Отправляем приветствие через TTS API
+      setTimeout(async () => {
+        try {
+          console.log(`[${session.id}] 🎵 Генерация приветствия через TTS API`);
+          
+          const greeting = await this.tts.createGreeting(this.selectedProfile!);
+          
+          // Отправляем текст приветствия в историю
+          this.sendToClient(session, {
+            type: 'history_added',
+            item: {
+              type: 'message',
+              role: 'assistant',
+              content: [
+                {
+                  type: 'text',
+                  text: greeting.text
+                }
+              ]
+            }
+          });
+
+          // Отправляем аудио приветствия
+          this.sendToClient(session, {
+            type: 'audio',
+            audio: greeting.audio.toString('base64'),
+            sampleRate: greeting.sampleRate // Передаем частоту дискретизации
+          });
+
+          // Отправляем событие окончания аудио
+          this.sendToClient(session, {
+            type: 'audio_end'
+          });
+
+          console.log(`[${session.id}] ✅ Приветствие отправлено (${greeting.audio.length} байт аудио)`);
+        } catch (error) {
+          console.error(`[${session.id}] ❌ Ошибка генерации приветствия:`, error);
+          
+          // Fallback: отправляем текстовое приветствие
+          const fallbackText = `Привет! Я ${this.selectedProfile?.displayName}. Как дела? Чем могу помочь?`;
+          this.sendToClient(session, {
+            type: 'history_added',
+            item: {
+              type: 'message',
+              role: 'assistant',
+              content: [
+                {
+                  type: 'text',
+                  text: fallbackText
+                }
+              ]
+            }
+          });
+        }
+      }, 500);
     });
 
     yandexWs.on('message', (data: any) => {
@@ -84,8 +142,7 @@ export class YandexHandler {
       try {
         const parsed = JSON.parse(rawMessage);
         const sanitized = sanitizeStringsDeep(parsed, 200);
-        console.log(`[${session.id}] 🔥 СОДЕРЖИМОЕ (JSON):`, sanitized);
-        console.log(`[${session.id}] 🔥 ПАРСИНГ УСПЕШЕН, тип: ${parsed.type}`);
+        console.log(`[${session.id}] 🔥 СОДЕРЖИМОЕ (JSON):`, JSON.stringify(sanitized));
         this.handleYandexMessage(session, toBuffer(data));
       } catch (error) {
         // Если это не JSON — выводим усечённую строку

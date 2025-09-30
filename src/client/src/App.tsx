@@ -180,8 +180,8 @@ function App() {
     switch (event.type) {
       case 'audio':
         if (event.audio) {
-          // Добавляем аудио в очередь для воспроизведения
-          audioPlayer.playAudio(event.audio);
+          // Добавляем аудио в очередь для воспроизведения с частотой дискретизации
+          audioPlayer.playAudio(event.audio, event.sampleRate);
           
           // Накапливаем аудио для текущего сообщения
           setCurrentMessageAudio(prev => [...prev, event.audio]);
